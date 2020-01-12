@@ -40,12 +40,13 @@
 --
 -- version 001 initial release
 --
+
 library ieee;
   use ieee.std_logic_1164.all;
   use ieee.std_logic_arith.all;
   use ieee.std_logic_unsigned.all;
 
-entity SCRAMBLE_TOP is
+entity scramble_top is
 port (
 	O_VIDEO_R        : out std_logic_vector(3 downto 0);
 	O_VIDEO_G        : out std_logic_vector(3 downto 0);
@@ -57,16 +58,12 @@ port (
 
 	O_AUDIO          : out std_logic_vector(9 downto 0);
 
-	ip_dip_switch    : in  std_logic_vector(5 downto 1);
+	ip_dip_switch    : in  std_logic_vector(4 downto 0);
 	ip_1p            : std_logic_vector(6 downto 0);
    ip_2p            : std_logic_vector(6 downto 0);
    ip_service       : std_logic;
    ip_coin1         : std_logic;
    ip_coin2         : std_logic;
-
-	dn_addr          : in  std_logic_vector(15 downto 0);
-	dn_data          : in  std_logic_vector(7 downto 0);
-	dn_wr            : in  std_logic;
 
 	RESET            : in  std_logic;
 	clk              : in  std_logic; -- 25
@@ -77,11 +74,7 @@ port (
 );
 end;
 
-architecture RTL of SCRAMBLE_TOP is
--- this MUST be set true for frogger
--- this MUST be set false for scramble, the_end, amidar
-constant I_HWSEL_FROGGER  : boolean := false;
-
+architecture RTL of scramble_top is
 
 -- ties to audio board
 signal audio_addr       : std_logic_vector(15 downto 0);
@@ -95,9 +88,8 @@ signal audio_reset_l    : std_logic;
 
 begin
 
-u_scramble : entity work.SCRAMBLE
+u_scobra : entity work.scramble
 port map (
-	I_HWSEL_FROGGER       => I_HWSEL_FROGGER,
 	--
 	O_VIDEO_R             => O_VIDEO_R,
 	O_VIDEO_G             => O_VIDEO_G,
@@ -118,10 +110,6 @@ port map (
 	O_IOPC7               => audio_iopc7,
 	O_RESET_WD_L          => audio_reset_l,
 	--
-	dn_addr               => dn_addr,
-	dn_data               => dn_data,
-	dn_wr                 => dn_wr,
-	--
 	ENA                   => ena_6,
 	ENAB                  => ena_6b,
 	ENA_12                => ena_12,
@@ -134,9 +122,8 @@ port map (
 --
 -- audio subsystem
 --
-u_audio : entity work.SCRAMBLE_AUDIO
+u_audio : entity work.scramble_audio
 port map (
-	I_HWSEL_FROGGER    => I_HWSEL_FROGGER,
 	--
 	I_ADDR             => audio_addr,
 	I_DATA             => audio_data_out,
@@ -149,8 +136,8 @@ port map (
 	--
 	O_AUDIO            => O_AUDIO,
 	--
-	I_1P_CTRL          => ip_1p, -- start, shoot1, shoot2, left,right,up,down
-	I_2P_CTRL          => ip_2p, -- start, shoot1, shoot2, left,right,up,down
+	I_1P_CTRL          => ip_1p,
+	I_2P_CTRL          => ip_2p,
 	I_SERVICE          => ip_service,
 	I_COIN1            => ip_coin1,
 	I_COIN2            => ip_coin2,
@@ -158,29 +145,10 @@ port map (
 	--
 	I_DIP              => ip_dip_switch,
 	--
-	dn_addr            => dn_addr,
-	dn_data            => dn_data,
-	dn_wr              => dn_wr,
-	--
 	I_RESET_L          => audio_reset_l,
 	ENA                => ena_6,
 	ENA_1_79           => ena_1_79,
 	CLK                => clk
 );
-
---button_in(0) = Joystick Up
---button_in(1) = Joystick Down
---button_in(2) = Joystick Left
---button_in(3) = Joystick Right
---button_in(4) = Button Left
---button_in(5) = Button Down
---button_in(6) = Joystick Fire
---button_in(7) = Button Right
-
---Buttons are connected to ground and connect to 3.3V when pressed
---Joystick has internal pullup resistor and connects to ground when pressed
-
---A '0' on the input is active. Inputs are active low.
-
 
 end RTL;

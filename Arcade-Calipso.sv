@@ -323,9 +323,9 @@ scramble_top scramble
 	.O_HBLANK(hblank),
 	.O_VBLANK(vblank),
 
-	.dn_addr(ioctl_addr[15:0]),
-	.dn_data(ioctl_dout),
-	.dn_wr(ioctl_wr),
+	//.dn_addr(ioctl_addr[15:0]),
+	//.dn_data(ioctl_dout),
+	//.dn_wr(ioctl_wr),
 
 	.O_AUDIO(audio),
 

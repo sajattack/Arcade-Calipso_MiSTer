@@ -45,9 +45,8 @@ library ieee;
   use ieee.std_logic_arith.all;
   use ieee.std_logic_unsigned.all;
 
-entity SCRAMBLE is
+entity scramble is
   port (
-    I_HWSEL_FROGGER       : in    boolean;
     --
     O_VIDEO_R             : out   std_logic_vector(3 downto 0);
     O_VIDEO_G             : out   std_logic_vector(3 downto 0);
@@ -68,10 +67,6 @@ entity SCRAMBLE is
     O_IOPC7               : out   std_logic;
     O_RESET_WD_L          : out   std_logic;
     --
-    dn_addr               : in  std_logic_vector(15 downto 0);
-    dn_data               : in  std_logic_vector(7 downto 0);
-    dn_wr                 : in  std_logic;
-    --
     ENA                   : in    std_logic;
     ENAB                  : in    std_logic;
     ENA_12                : in    std_logic;
@@ -81,7 +76,7 @@ entity SCRAMBLE is
     );
 end;
 
-architecture RTL of SCRAMBLE is
+architecture RTL of scramble is
 
     type  array_4x8   is array (0 to 3) of std_logic_vector(7 downto 0);
     -- timing
@@ -226,9 +221,8 @@ begin
   --
   -- video
   --
-  u_video : entity work.SCRAMBLE_VIDEO
+  u_video : entity work.scramble_video
     port map (
-      I_HWSEL_FROGGER => I_HWSEL_FROGGER,
       --
       I_HCNT          => hcnt,
       I_VCNT          => vcnt,
@@ -255,10 +249,6 @@ begin
       O_VIDEO_R       => O_VIDEO_R,
       O_VIDEO_G       => O_VIDEO_G,
       O_VIDEO_B       => O_VIDEO_B,
-      --
-      dn_addr         => dn_addr,
-      dn_data         => dn_data,
-      dn_wr           => dn_wr,
       --
       ENA             => ENA,
       ENAB            => ENAB,
@@ -327,111 +317,45 @@ begin
   --
   -- primary addr decode
   --
-  p_mem_decode : process(cpu_rfsh_l, cpu_rd_l, cpu_wr_l, cpu_mreq_l, cpu_addr, I_HWSEL_FROGGER)
+  p_mem_decode : process(cpu_rfsh_l, cpu_rd_l, cpu_wr_l, cpu_mreq_l, cpu_addr)
   begin
-  -- Scramble map
-  --0000-3fff ROM
-  --4000-47ff RAM
-  --4800-4bff Video RAM
-  --5000-50ff Object RAM
-  --5000-503f  screen attributes
-  --5040-505f  sprites
-  --5060-507f  bullets
-  --5080-50ff  unused?
-
-  --read:
-  --7000      Watchdog Reset (Scramble)
-  --8100      IN0
-  --8101      IN1
-  --8102      IN2 (bits 5 and 7 used for protection check in Scramble)
-
-  --write:
-  --6800-6807 control reg
-  --8200      To AY-3-8910 port A (commands for the audio CPU)
-  --8201      bit 3 = interrupt trigger on audio CPU  bit 4 = AMPM (?)
-  --8202      protection check control?
-
-  -- Frogger map
-  --0000-3fff ROM
-  --8000-87ff RAM
-  --a800-abff Video RAM
-  --b000-b0ff Object RAM
-  --b000-b03f screen attributes
-  --b040-b05f sprites
-  --b060-b0ff unused?
-
-  --read:
-  --8800     Watchdog Reset
-  --e000     IN0
-  --e002     IN1
-  --e004     IN2
     cpu_int_l   <= '1';
     cpu_busrq_l <= '1';
 
     page_4to7_l <= '1';
     if (cpu_mreq_l = '0') and (cpu_rfsh_l = '1') then
-
-      if I_HWSEL_FROGGER then
-        cpu_int_l   <= '0';
-        cpu_busrq_l <= cpu_addr(15);
-      end if;
-
-      if not I_HWSEL_FROGGER then
-        if (cpu_addr(15 downto 14) = "01") then page_4to7_l <= '0'; end if;
-      else
-        if (cpu_addr(15 downto 14) = "10") then page_4to7_l <= '0'; end if;
-      end if;
+      if (cpu_addr(15 downto 14) = "10") then page_4to7_l <= '0'; end if;
     end if;
 
   end process;
 
-  p_mem_decode2 : process(I_HWSEL_FROGGER, cpu_addr, page_4to7_l, cpu_rfsh_l, cpu_rd_l, cpu_wr_l, wren)
+  p_mem_decode2 : process(cpu_addr, page_4to7_l, cpu_rfsh_l, cpu_rd_l, cpu_wr_l, wren)
   begin
     waen_l <= '1';
     objen_l <= '1';
-    if not I_HWSEL_FROGGER then
-      if (page_4to7_l = '0') and (cpu_rfsh_l = '1') then
-        if (cpu_addr(13 downto 11) = "001") then waen_l <= '0'; end if;
-        if (cpu_addr(13 downto 11) = "010") then objen_l <= '0'; end if;
-      end if;
-    else
-      if (page_4to7_l = '0') and (cpu_rfsh_l = '1') then
-        if (cpu_addr(13 downto 11) = "101") then waen_l <= '0'; end if;
-        if (cpu_addr(13 downto 11) = "110") then objen_l <= '0'; end if;
-      end if;
+    if (page_4to7_l = '0') and (cpu_rfsh_l = '1') then
+      if (cpu_addr(13 downto 11) = "001") then waen_l <= '0'; end if;
+      if (cpu_addr(13 downto 11) = "010") then objen_l <= '0'; end if;
     end if;
 
     -- read decode
     vramrd_l <= '1';
     objramrd_l <= '1';
 
-    if not I_HWSEL_FROGGER then
-      if (page_4to7_l = '0') and (cpu_rd_l = '0') then
-        if (cpu_addr(13 downto 11) = "001") then vramrd_l <= '0'; end if;
-        if (cpu_addr(13 downto 11) = "010") then objramrd_l <= '0'; end if;
-      end if;
-    else
-      if (page_4to7_l = '0') and (cpu_rd_l = '0') then
-        if (cpu_addr(13 downto 11) = "101") then vramrd_l <= '0'; end if;
-      end if;
-    end if;
+	 if (page_4to7_l = '0') and (cpu_rd_l = '0') then
+	   if (cpu_addr(13 downto 11) = "001") then vramrd_l <= '0'; end if;
+	   if (cpu_addr(13 downto 11) = "010") then objramrd_l <= '0'; end if;
+	 end if;
+
     -- write decode
     vramwr_l <= '1';
     objramwr_l <= '1';
     select_l <= '1';
 
-    if not I_HWSEL_FROGGER then
-      if (page_4to7_l = '0') and (cpu_wr_l = '0') and (wren = '1') then
-        if (cpu_addr(13 downto 11) = "001") then vramwr_l <= '0'; end if;
-        if (cpu_addr(13 downto 11) = "010") then objramwr_l <= '0'; end if;
-        if (cpu_addr(13 downto 11) = "101") then select_l <= '0'; end if; -- control reg
-      end if;
-    else
-      if (page_4to7_l = '0') and (cpu_wr_l = '0') and (wren = '1') then
-        if (cpu_addr(13 downto 11) = "101") then vramwr_l <= '0'; end if;
-        if (cpu_addr(13 downto 11) = "110") then objramwr_l <= '0'; end if;
-        if (cpu_addr(13 downto 11) = "111") then select_l <= '0'; end if; -- control reg
-      end if;
+    if (page_4to7_l = '0') and (cpu_wr_l = '0') and (wren = '1') then
+      if (cpu_addr(13 downto 11) = "001") then vramwr_l <= '0'; end if;
+      if (cpu_addr(13 downto 11) = "010") then objramwr_l <= '0'; end if;
+      if (cpu_addr(13 downto 11) = "101") then select_l <= '0'; end if; -- control reg
     end if;
   end process;
 
@@ -441,20 +365,7 @@ begin
   begin
      wait until rising_edge(CLK);
      if (ENA = '1') then
-    -- scramble
-    --6801      interrupt enable
-    --6802      coin counter
-    --6803      ? (POUT1)
-    --6804      stars on
-    --6805      ? (POUT2)
-    --6806      screen vertical flip
-    --6807      screen horizontal flip
-      if not I_HWSEL_FROGGER then
-        addr := cpu_addr(2 downto 0);
-      else
-        addr := cpu_addr(4 downto 2);
-      end if;
-
+      addr := cpu_addr(2 downto 0);
       dec := "00000000";
       if (select_l = '0') then
         case addr(2 downto 0) is
@@ -469,7 +380,6 @@ begin
           when others => null;
         end case;
       end if;
-
       if (reset_wd_l = '0') then
         control_reg <= (others => '0');
       else
@@ -482,54 +392,36 @@ begin
     end if;
   end process;
 
-  p_control_reg_assign : process(control_reg, I_HWSEL_FROGGER)
+  p_control_reg_assign : process(control_reg)
   begin
-    if not I_HWSEL_FROGGER then
-      -- Scramble
-      intst_l <= control_reg(1);
-      iopc7   <= control_reg(2);
-      pout1   <= control_reg(3);
-      starson <= control_reg(4);
-      hcma    <= control_reg(6);
-      vcma    <= control_reg(7);
-    else
-      intst_l <= control_reg(2);
-      iopc7   <= control_reg(6);
-      pout1   <= control_reg(7);
-      starson <= '0';
-      hcma    <= control_reg(4);
-      vcma    <= control_reg(3);
-    end if;
+    intst_l <= control_reg(1);
+    iopc7   <= control_reg(2);
+    pout1   <= control_reg(3);
+    starson <= control_reg(4);
+    hcma    <= control_reg(6);
+    vcma    <= control_reg(7);
   end process;
-  --
-  --
-  --  roms / rams
-	pgm_rom : work.dpram generic map (14,8)
-	port map
-	(
-		clock_a   => clk,
-		wren_a    => dn_wr and (not dn_addr(15)) and (not dn_addr(14)),
-		address_a => dn_addr(13 downto 0),
-		data_a    => dn_data,
 
-		clock_b   => CLK,
-		address_b => cpu_addr(13 downto 0),
-		q_b       => rom_dout
+  	pgm_rom : entity work.ROM_PGM
+	port map(
+		clk   	=> CLK,
+		addr 		=> cpu_addr(14 downto 0),
+		data     => rom_dout
 	);
-
+	
 	u_cpu_ram : work.dpram generic map (11,8)
 	port map
 	(
-		clock_a   => clk,
-		enable_a  => ena,
-		wren_a    => ram_ena and (not cpu_wr_l),
+		clk_a_i  => clk,
+		en_a_i   => ena,
+		we_i     => ram_ena and (not cpu_wr_l),
 
-		address_a => cpu_addr(10 downto 0),
-		data_a    => cpu_data_out,
+      addr_a_i => cpu_addr(10 downto 0),
+		data_a_i => cpu_data_out,
 
-		clock_b   => clk,
-		address_b => cpu_addr(10 downto 0),
-		q_b       => ram_dout
+		clk_b_i  => clk,
+      addr_b_i => cpu_addr(10 downto 0),
+		data_b_o => ram_dout
 	);
 
   p_ram_ctrl : process(cpu_addr, page_4to7_l)
@@ -540,16 +432,10 @@ begin
     end if;
   end process;
 
-  p_cpu_data_in_mux : process(I_HWSEL_FROGGER, cpu_addr, cpu_rd_l, cpu_mreq_l, cpu_rfsh_l, ram_dout, rom_dout, vramrd_l, vram_data, I_DATA_OE_L, I_DATA )
+  p_cpu_data_in_mux : process(cpu_addr, cpu_rd_l, cpu_mreq_l, cpu_rfsh_l, ram_dout, rom_dout, vramrd_l, vram_data, I_DATA_OE_L, I_DATA )
     variable ram_addr : std_logic_vector(1 downto 0);
   begin
-
-    if not I_HWSEL_FROGGER then
-      ram_addr := "01";
-    else
-      ram_addr := "10";
-    end if;
-
+		ram_addr := "10";
     cpu_data_in <= (others => '0');
     if    (vramrd_l = '0') then
       cpu_data_in <= vram_data;
@@ -558,7 +444,7 @@ begin
       cpu_data_in <= I_DATA;
     --
     elsif (cpu_mreq_l = '0') and (cpu_rfsh_l = '1') then
-      if (cpu_addr(15 downto 14) = "00") and (cpu_rd_l = '0') and (cpu_mreq_l = '0') and (cpu_rfsh_l = '1') then
+      if (cpu_addr(15) = '0') and (cpu_rd_l = '0') then
         cpu_data_in <= rom_dout;
       --
       elsif (cpu_addr(15 downto 14) = ram_addr) then

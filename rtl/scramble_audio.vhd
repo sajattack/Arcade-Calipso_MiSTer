@@ -40,14 +40,14 @@
 --
 -- version 001 initial release
 --
+
 library ieee;
   use ieee.std_logic_1164.all;
   use ieee.std_logic_arith.all;
   use ieee.std_logic_unsigned.all;
 
-entity SCRAMBLE_AUDIO is
+entity scramble_audio is
   port (
-    I_HWSEL_FROGGER    : in    boolean;
     --
     I_ADDR             : in    std_logic_vector(15 downto 0);
     I_DATA             : in    std_logic_vector( 7 downto 0);
@@ -67,11 +67,8 @@ entity SCRAMBLE_AUDIO is
     I_COIN2            : in    std_logic;
     O_COIN_COUNTER     : out   std_logic;
     --
-    I_DIP              : in    std_logic_vector( 5 downto 1);
-    --
-    dn_addr            : in    std_logic_vector(15 downto 0);
-    dn_data            : in    std_logic_vector(7 downto 0);
-    dn_wr              : in    std_logic;
+    I_DIP              : in    std_logic_vector( 4 downto 0);
+
     --
     I_RESET_L          : in    std_logic;
     ENA                : in    std_logic; -- 6 MHz
@@ -80,7 +77,7 @@ entity SCRAMBLE_AUDIO is
     );
 end;
 
-architecture RTL of SCRAMBLE_AUDIO is
+architecture RTL of scramble_audio is
 
   signal reset : std_logic;
   signal cpu_ena            : std_logic;
@@ -212,13 +209,9 @@ architecture RTL of SCRAMBLE_AUDIO is
      --                       0 0              x10000
 
 begin
-  -- scramble
+  -- Super Cobra
   --0000-1fff ROM
   --8000-83ff RAM
-
-  -- frogger
-  --0000-17ff ROM
-  --4000-43ff RAM
 
   cpu_ena <= '1'; -- run at audio clock speed
   -- other cpu signals
@@ -267,99 +260,51 @@ begin
     end if;
   end process;
 
-  p_mem_decode_comb : process(cpu_rfsh_l, cpu_wr_l, cpu_rd_l, cpu_mreq_l, cpu_addr, I_HWSEL_FROGGER)
+  p_mem_decode_comb : process(cpu_rfsh_l, cpu_wr_l, cpu_rd_l, cpu_mreq_l, cpu_addr)
     variable decode : std_logic;
   begin
-    if not I_HWSEL_FROGGER then
       decode := '0';
       if (cpu_rfsh_l = '1') and (cpu_mreq_l = '0') and (cpu_addr(15) = '1') then
         decode := '1';
       end if;
-
       filter_load <= decode and cpu_addr(12) and (not cpu_wr_l);
       ram_cs      <= decode and (not cpu_addr(12));
-    else
-      decode := '0';
-      if (cpu_rfsh_l = '1') and (cpu_mreq_l = '0') and (cpu_addr(14) = '1') then
-        decode := '1';
-      end if;
-
-      filter_load <= decode and cpu_addr(13) and (not cpu_wr_l);
-      ram_cs      <= decode and (not cpu_addr(13));
-    end if;
-
     rom_oe <= '0';
-    if not I_HWSEL_FROGGER then
       if (cpu_addr(15) = '0') and (cpu_mreq_l = '0') and (cpu_rd_l = '0') then
         rom_oe <= '1';
       end if;
-    else
-      if (cpu_addr(14) = '0') and (cpu_mreq_l = '0') and (cpu_rd_l = '0') then
-        rom_oe <= '1';
-      end if;
-    end if;
-
   end process;
 
-	rom0_cs <= '1' when dn_addr(15 downto 11) = X"5"&'0' else '0';
-	rom1_cs <= '1' when dn_addr(15 downto 11) = X"5"&'1' else '0';
-	rom2_cs <= '1' when dn_addr(15 downto 11) = X"6"&'0' else '0';
+  u_rom_5c : entity work.ROM_SND_0
+    port map (
+      CLK         => CLK,
+      ADDR        => cpu_addr(10 downto 0),
+      DATA        => cpu_rom0_dout
+      );
 
-	u_rom_5c : work.dpram generic map (11,8)
-	port map
-	(
-		clock_a   => clk,
-		wren_a    => dn_wr and rom0_cs,
-		address_a => dn_addr(10 downto 0),
-		data_a    => dn_data,
-
-		clock_b   => CLK,
-		address_b => cpu_addr(10 downto 0),
-		q_b       => cpu_rom0_dout
-	);
-
-	u_rom_5d : work.dpram generic map (11,8)
-	port map
-	(
-		clock_a   => clk,
-		wren_a    => dn_wr and rom1_cs,
-		address_a => dn_addr(10 downto 0),
-		data_a    => dn_data,
-
-		clock_b   => CLK,
-		address_b => cpu_addr(10 downto 0),
-		q_b       => cpu_rom1_dout
-	);
-
-	u_rom_5e : work.dpram generic map (11,8)
-	port map
-	(
-		clock_a   => clk,
-		wren_a    => dn_wr and rom2_cs,
-		address_a => dn_addr(10 downto 0),
-		data_a    => dn_data,
-
-		clock_b   => CLK,
-		address_b => cpu_addr(10 downto 0),
-		q_b       => cpu_rom2_dout
-	);
-
-  p_rom_mux : process(I_HWSEL_FROGGER, cpu_rom0_dout, cpu_rom1_dout, cpu_rom2_dout, cpu_addr, rom_oe)
+  u_rom_5d : entity work.ROM_SND_1
+    port map (
+      CLK         => CLK,
+      ADDR        => cpu_addr(10 downto 0),
+      DATA        => cpu_rom1_dout
+      );
+		
+  p_rom_mux : process(cpu_rom0_dout, cpu_rom1_dout, cpu_rom2_dout, cpu_addr, rom_oe)
     variable rom_oe_decode : std_logic;
     variable cpu_rom0_dout_s : std_logic_vector(7 downto 0);
   begin
-    if not I_HWSEL_FROGGER then
+--    if not I_HWSEL_FROGGER then
       cpu_rom0_dout_s := cpu_rom0_dout;
-    else -- swap bits 0 and 1
-      cpu_rom0_dout_s := cpu_rom0_dout(7 downto 2) & cpu_rom0_dout(0) & cpu_rom0_dout(1);
-   end if;
+ --   else -- swap bits 0 and 1
+--      cpu_rom0_dout_s := cpu_rom0_dout(7 downto 2) & cpu_rom0_dout(0) & cpu_rom0_dout(1);
+--   end if;
 
     rom_dout <= (others => '0');
     rom_oe_decode := '0';
     case cpu_addr(13 downto 11) is
       when "000" => rom_dout <= cpu_rom0_dout_s; rom_oe_decode := '1';
       when "001" => rom_dout <= cpu_rom1_dout;   rom_oe_decode := '1';
-      when "010" => rom_dout <= cpu_rom2_dout;   rom_oe_decode := '1';
+ --     when "010" => rom_dout <= cpu_rom2_dout;   rom_oe_decode := '1';
       when others => null;
     end case;
 
@@ -369,18 +314,18 @@ begin
     end if;
   end process;
 
+	
 	u_ram_6c_6d : work.dpram generic map (10,8)
 	port map
 	(
-        clock_a   => clk,
-        enable_a  => ENA_1_79,
-        wren_a    => ram_cs and (not cpu_wr_l),
-        address_a => cpu_addr(9 downto 0),
-        data_a    => cpu_data_out,
-
-        clock_b   => clk,
-        address_b => cpu_addr(9 downto 0),
-        q_b       => ram_dout
+        addr_a_i => cpu_addr(9 downto 0),
+        data_a_i => cpu_data_out,
+        clk_b_i  => clk,
+        addr_b_i => cpu_addr(9 downto 0),
+        data_b_o => ram_dout,
+        we_i     => ram_cs and (not cpu_wr_l),
+        en_a_i   => ENA_1_79,
+        clk_a_i  => clk
 	);
 
   p_cpu_data_mux : process(rom_dout, rom_active, ram_dout, ym2149_3C_oe_l, ym2149_3C_dv, ym2149_3D_oe_l, ym2149_3D_dv, ram_cs, cpu_wr_l)
@@ -408,38 +353,25 @@ begin
     end if;
   end process;
 
-  p_8255_decode : process(I_RESET_L, I_ADDR, I_HWSEL_FROGGER)
+  p_8255_decode : process(I_RESET_L, I_ADDR)
   begin
     reset <= not I_RESET_L;
     i8255_1D_cs_l <= '1';
     i8255_1E_cs_l <= '1';
 
-    if not I_HWSEL_FROGGER then
-      -- the interface one
-      if (I_ADDR(9) = '1') and (I_ADDR(15) = '1') then
-        i8255_1D_cs_l <= '0';
-      end if;
-
-      -- the button one
-      if (I_ADDR(8) = '1') and (I_ADDR(15) = '1') then
-        i8255_1E_cs_l <= '0';
-      end if;
-      i8255_addr <= I_ADDR(1 downto 0);
-    else
-      -- the interface one
-      if (I_ADDR(12) = '1') and (I_ADDR(15 downto 14) = "11") then
-        i8255_1D_cs_l <= '0';
-      end if;
-
-      -- the button one
-      if (I_ADDR(13) = '1') and (I_ADDR(15 downto 14) = "11") then
-        i8255_1E_cs_l <= '0';
-      end if;
-      i8255_addr <= I_ADDR(2 downto 1);
+    -- the interface one
+    if (I_ADDR(13 downto 11) = "100") and (I_ADDR(15) = '1') then
+      i8255_1D_cs_l <= '0';
     end if;
+
+    -- the button one
+    if (I_ADDR(13 downto 11) = "011") and (I_ADDR(15) = '1') then
+      i8255_1E_cs_l <= '0';
+    end if;
+    i8255_addr <= I_ADDR(1 downto 0);
   end process;
 
-  p_ym_decode : process(cpu_rd_l, cpu_wr_l, cpu_iorq_l, cpu_addr, I_HWSEL_FROGGER)
+  p_ym_decode : process(cpu_rd_l, cpu_wr_l, cpu_iorq_l, cpu_addr)
     variable rd_3c : std_logic;
     variable wr_3c : std_logic;
     variable ad_3c : std_logic;
@@ -461,64 +393,53 @@ begin
   --  1   1  1    addr latch
 
 
-    if not I_HWSEL_FROGGER then
-      rd_3c := (not cpu_rd_l) and (not cpu_iorq_l) and cpu_addr(5);
-      wr_3c := (not cpu_wr_l) and (not cpu_iorq_l) and cpu_addr(5);
-      ad_3c := (not cpu_wr_l) and (not cpu_iorq_l) and cpu_addr(4);
-    else
-      rd_3c := '0';
-      wr_3c := '0';
-      ad_3c := '0';
-    end if;
+    rd_3c := (not cpu_rd_l) and (not cpu_iorq_l) and cpu_addr(5);
+    wr_3c := (not cpu_wr_l) and (not cpu_iorq_l) and cpu_addr(5);
+    ad_3c := (not cpu_wr_l) and (not cpu_iorq_l) and cpu_addr(4);
 
     ym2149_3C_bdir <= wr_3c;
     ym2149_3C_bc2  <= rd_3c or wr_3c;
     ym2149_3C_bc1  <= rd_3c or ad_3c;
 
 
-    if not I_HWSEL_FROGGER then
-      rd_3d := (not cpu_rd_l) and (not cpu_iorq_l) and cpu_addr(7);
-      wr_3d := (not cpu_wr_l) and (not cpu_iorq_l) and cpu_addr(7);
-      ad_3d := (not cpu_wr_l) and (not cpu_iorq_l) and cpu_addr(6);
-    else
-      rd_3d := (not cpu_rd_l) and (not cpu_iorq_l) and cpu_addr(6);
-      wr_3d := (not cpu_wr_l) and (not cpu_iorq_l) and cpu_addr(6);
-      ad_3d := (not cpu_wr_l) and (not cpu_iorq_l) and cpu_addr(7);
-    end if;
+    rd_3d := (not cpu_rd_l) and (not cpu_iorq_l) and cpu_addr(7);
+    wr_3d := (not cpu_wr_l) and (not cpu_iorq_l) and cpu_addr(7);
+    ad_3d := (not cpu_wr_l) and (not cpu_iorq_l) and cpu_addr(6);
 
     ym2149_3D_bdir <= wr_3d;
     ym2149_3D_bc2  <= rd_3d or wr_3d;
     ym2149_3D_bc1  <= rd_3d or ad_3d;
 
   end process;
-
-  i8255_1E_pa(7) <= I_COIN1;
-  i8255_1E_pa(6) <= I_COIN2;
-  i8255_1E_pa(5) <= I_1P_CTRL(3); -- left
-  i8255_1E_pa(4) <= I_1P_CTRL(2); -- right
-  i8255_1E_pa(3) <= I_1P_CTRL(4); -- shoot1
-  i8255_1E_pa(2) <= I_SERVICE;
-  i8255_1E_pa(1) <= I_1P_CTRL(5); -- shoot2
-  i8255_1E_pa(0) <= I_2P_CTRL(1); -- up
-
-  i8255_1E_pb(7) <= I_1P_CTRL(6); -- start
-  i8255_1E_pb(6) <= I_2P_CTRL(6); -- start
-  i8255_1E_pb(5) <= I_2P_CTRL(3); -- left
-  i8255_1E_pb(4) <= I_2P_CTRL(2); -- right
-  i8255_1E_pb(3) <= I_2P_CTRL(4); -- shoot1
-  i8255_1E_pb(2) <= I_2P_CTRL(5); -- shoot2
-  i8255_1E_pb(1) <= I_DIP(1);
-  i8255_1E_pb(0) <= I_DIP(2);
-
-  i8255_1E_pc(7) <= net_1e10_i;
-  i8255_1E_pc(6) <= I_1P_CTRL(0); -- down
-  i8255_1E_pc(5) <= net_1e12_i;
-  i8255_1E_pc(4) <= I_1P_CTRL(1); -- up
-  i8255_1E_pc(3) <= I_DIP(3);
-  i8255_1E_pc(2) <= I_DIP(4);
-  i8255_1E_pc(1) <= I_DIP(5);
-  i8255_1E_pc(0) <= I_2P_CTRL(0); -- down
-  O_COIN_COUNTER <= not I_IOPC7; -- open drain actually
+  
+  i8255_1E_pa(7) <= I_COIN2;--coin1
+  i8255_1E_pa(6) <= I_COIN1;--coin2
+  i8255_1E_pa(5) <= I_1P_CTRL(3); -- left1
+  i8255_1E_pa(4) <= I_1P_CTRL(2); -- right1
+  i8255_1E_pa(3) <= I_1P_CTRL(4); -- down1
+  i8255_1E_pa(2) <= I_1P_CTRL(1); -- up1
+  i8255_1E_pa(1) <= '1';--unused
+  i8255_1E_pa(0) <= I_SERVICE;--unused Test Retract        
+  
+  i8255_1E_pb(7) <= '1';--unused
+  i8255_1E_pb(6) <= '1';--unused
+  i8255_1E_pb(5) <= I_2P_CTRL(3); -- left2
+  i8255_1E_pb(4) <= I_2P_CTRL(2); -- right2
+  i8255_1E_pb(3) <= I_2P_CTRL(0); -- down2
+  i8255_1E_pb(2) <= I_2P_CTRL(1); -- up2
+  i8255_1E_pb(1) <= I_DIP(0);--Table
+  i8255_1E_pb(0) <= I_DIP(1);--Rocket Number
+  
+  i8255_1E_pc(7) <= '1';--unused
+  i8255_1E_pc(6) <= I_2P_CTRL(6); -- 2 Start
+  i8255_1E_pc(5) <= '1';--unused
+  i8255_1E_pc(4) <= '1';--unused
+  i8255_1E_pc(3) <= I_DIP(4);--coining
+  i8255_1E_pc(2) <= I_DIP(3);--coining
+  i8255_1E_pc(1) <= I_DIP(2);--Free Play
+  i8255_1E_pc(0) <= I_1P_CTRL(6); -- start1       
+  
+  --O_COIN_COUNTER <= not I_IOPC7; -- open drain actually
 
   --
   -- PIA CHIPS
@@ -641,16 +562,12 @@ begin
     end if;
   end process;
 
-  p_ym2149_3d_iob_in : process(I_HWSEL_FROGGER, ls90_op, ls90_clk)
+  p_ym2149_3d_iob_in : process(ls90_op, ls90_clk)
   begin
-    if not I_HWSEL_FROGGER then
       ym2149_3D_iob_in <= ls90_op(0) & ls90_op(3) & ls90_op(2) & ls90_clk & "1110";
-    else
-      ym2149_3D_iob_in <= ls90_op(0) & ls90_op(3) & '1' & ls90_clk & ls90_op(2) & "110";
-    end if;
   end process;
 
-  u_ym2149_3C : entity work.YM2149 -- not used for frogger
+  u_ym2149_3C : entity work.YM2149
   port map (
     -- data bus
     I_DA                => cpu_data_out,
