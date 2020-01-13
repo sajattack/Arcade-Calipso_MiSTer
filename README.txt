@@ -22,7 +22,6 @@
 --   F2          : Coin + Start 2 players
 --   F1          : Coin + Start 1 player
 --   CTRL        : Fire
---   SPACE       : Bomb
 --   UP,DOWN,LEFT,RIGHT arrows : Movements
 --
 -- MAME/IPAC/JPAC Style Keyboard inputs:
