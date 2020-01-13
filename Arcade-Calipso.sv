@@ -106,18 +106,14 @@ localparam CONF_STR = {
 	"H0O2,Orientation,Vert,Horz;",
 	"O35,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",
 	"-;",
-	//"O89,Lives,3,5,4,255(Cheat);",
-	//"OB,Bonus Life,30k/70k,50k/80k;",
-	//"OC,Cabinet,Upright,Cocktail;",	
-	//"OD,Demo Sounds,Off,On;",
-	//"OE,Test,Off,On;",	
+	"O8,Lives,3,5;",	
+	"OD,Demo Sounds,Off,On;",
 	"-;",
 	"R0,Reset;",
 	"J1,Fire,Bomb,Start 1P,Start 2P,Coin;",
 	"jn,A,B,Start,Select,R;",
 	"V,v",`BUILD_DATE
 };
-wire [5:1] m_dip = {status[13],status[11],status[12],~status[9:8]};
 
 ////////////////////   CLOCKS   ///////////////////
 
@@ -257,24 +253,24 @@ reg btn_test=0;
 wire no_rotate = status[2] & ~direct_video;
 
 
-wire m_up     = no_rotate ? btn_left  | joy[1] : btn_up    | joy[3];
-wire m_down   = no_rotate ? btn_right | joy[0] : btn_down  | joy[2];
-wire m_left   = no_rotate ? btn_down  | joy[2] : btn_left  | joy[1];
-wire m_right  = no_rotate ? btn_up    | joy[3] : btn_right | joy[0];
-wire m_fire1  = btn_fire1 | joy[4];
-wire m_fire2  = btn_fire2 | joy[5];
+wire m_up     = no_rotate ? btn_left  | joystick_0[1] : btn_up    | joystick_0[3];
+wire m_down   = no_rotate ? btn_right | joystick_0[0] : btn_down  | joystick_0[2];
+wire m_left   = no_rotate ? btn_down  | joystick_0[2] : btn_left  | joystick_0[1];
+wire m_right  = no_rotate ? btn_up    | joystick_0[3] : btn_right | joystick_0[0];
+wire m_fire1  = btn_fire1 | joystick_0[4];
+wire m_fire2  = btn_fire2 | joystick_0[5];
 
-wire m_up_2     = no_rotate ? btn_left_2  | joy[1] : btn_up_2    | joy[3];
-wire m_down_2   = no_rotate ? btn_right_2 | joy[0] : btn_down_2  | joy[2];
-wire m_left_2   = no_rotate ? btn_down_2  | joy[2] : btn_left_2  | joy[1];
-wire m_right_2  = no_rotate ? btn_up_2    | joy[3] : btn_right_2 | joy[0];
-wire m_fire1_2  = btn_fire1_2|joy[4];
-wire m_fire2_2  = btn_fire2_2|joy[5];
+wire m_up_2     = no_rotate ? btn_left_2  | joystick_1[1] : btn_up_2    | joystick_1[3];
+wire m_down_2   = no_rotate ? btn_right_2 | joystick_1[0] : btn_down_2  | joystick_1[2];
+wire m_left_2   = no_rotate ? btn_down_2  | joystick_1[2] : btn_left_2  | joystick_1[1];
+wire m_right_2  = no_rotate ? btn_up_2    | joystick_1[3] : btn_right_2 | joystick_1[0];
+wire m_fire1_2  = btn_fire1_2|joystick_1[4];
+wire m_fire2_2  = btn_fire2_2|joystick_1[5];
 
 
 wire m_start1 = btn_one_player  | joy[6];
 wire m_start2 = btn_two_players | joy[7];
-wire m_coin   = m_start1 | m_start2 | joy[8];
+wire m_coin   = joy[8];
 
 
 wire hblank, vblank;
@@ -329,12 +325,15 @@ scramble_top scramble
 
 	.O_AUDIO(audio),
 
-	//.button_in(~{m_fire2, m_start2, m_fire1, m_coin, m_start1, m_right, m_left, m_down, m_up}),
-	.ip_1p(~{m_start1|btn_start_1,m_fire2,m_fire1,m_left,m_right,m_up,m_down}),
-	.ip_2p(~{m_start2|btn_start_2,m_fire2_2,m_fire1_2,m_left_2,m_right_2,m_up_2,m_down_2}),
-	.ip_service(~status[14]),
-	.ip_coin1(m_coin|btn_coin_1|btn_coin_2),
-	.ip_coin2(1'b0),
+//	.ip_1p(~{m_start1|btn_start_1,m_fire2,m_fire1,m_left,m_right,m_up,m_down}),
+//	.ip_2p(~{m_start2|btn_start_2,m_fire2_2,m_fire1_2,m_left_2,m_right_2,m_up_2,m_down_2}),
+//	.ip_service(~status[14]),
+//	.ip_coin1(m_coin|btn_coin_1|btn_coin_2),
+//	.ip_coin2(1'b0),
+
+	.IN0_O(~{m_coin, 1'b0, m_left, m_right, m_down, m_up, 1'b1, m_start2|m_fire1_2}),     // coin1, coin2, left, right, down, up, unused, start 2p / player2 fire
+	.IN1_O(~{1'b1, 1'b1, m_left_2, m_right_2, m_down_2, m_up_2, status[13], status[8]}), // unused, unused, left, right, down, up, demo sounds, lives 3/5
+	.IN2_O({5'b0, 2'b01, ~(m_fire1 | m_start1)}),                                        // unused[7:3], coin dip[2:1], start 1p / player1 fire
 
 	.RESET(RESET | status[0] | ioctl_download | buttons[1]),
 	.clk(clk_sys),

@@ -58,13 +58,9 @@ port (
 
 	O_AUDIO          : out std_logic_vector(9 downto 0);
 
-	ip_dip_switch    : in  std_logic_vector(4 downto 0);
-	ip_1p            : std_logic_vector(6 downto 0);
-   ip_2p            : std_logic_vector(6 downto 0);
-   ip_service       : std_logic;
-   ip_coin1         : std_logic;
-   ip_coin2         : std_logic;
-
+	IN0_O				  : in  std_logic_vector(7 downto 0);
+	IN1_O				  : in  std_logic_vector(7 downto 0);
+	IN2_O				  : in  std_logic_vector(7 downto 0);
 	RESET            : in  std_logic;
 	clk              : in  std_logic; -- 25
 	ena_12           : in  std_logic; -- 6.25 x 2
@@ -136,14 +132,10 @@ port map (
 	--
 	O_AUDIO            => O_AUDIO,
 	--
-	I_1P_CTRL          => ip_1p,
-	I_2P_CTRL          => ip_2p,
-	I_SERVICE          => ip_service,
-	I_COIN1            => ip_coin1,
-	I_COIN2            => ip_coin2,
+	IN0_O					 => IN0_O,
+	IN1_O					 => IN1_O,
+	IN2_O					 => IN2_O,
 	O_COIN_COUNTER     => open,
-	--
-	I_DIP              => ip_dip_switch,
 	--
 	I_RESET_L          => audio_reset_l,
 	ENA                => ena_6,
