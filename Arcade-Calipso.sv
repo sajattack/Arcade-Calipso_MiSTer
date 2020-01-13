@@ -110,8 +110,8 @@ localparam CONF_STR = {
 	"OD,Demo Sounds,Off,On;",
 	"-;",
 	"R0,Reset;",
-	"J1,Fire,Bomb,Start 1P,Start 2P,Coin;",
-	"jn,A,B,Start,Select,R;",
+	"J1,Fire,Start 1P,Start 2P,Coin;",
+	"jn,A,Start,Select,R;",
 	"V,v",`BUILD_DATE
 };
 
@@ -205,7 +205,6 @@ always @(posedge clk_sys) begin
 			'hX72: btn_down        <= pressed; // down
 			'hX6B: btn_left        <= pressed; // left
 			'hX74: btn_right       <= pressed; // right
-			'h029: btn_fire2       <= pressed; // space
 			'h014: btn_fire1       <= pressed; // ctrl
 
 			'h005: btn_one_player  <= pressed; // F1
@@ -222,9 +221,7 @@ always @(posedge clk_sys) begin
 			'h02B: btn_down_2      <= pressed; // F
 			'h023: btn_left_2      <= pressed; // D
 			'h034: btn_right_2     <= pressed; // G
-			'h01C: btn_fire1_2     <= pressed; // A
-         'h01B: btn_fire2_2     <= pressed; // S			
-			'h02C: btn_test        <= pressed; // T
+			'h01C: btn_fire1_2     <= pressed; // A			
 		endcase
 	end
 end
@@ -234,7 +231,6 @@ reg btn_down  = 0;
 reg btn_right = 0;
 reg btn_left  = 0;
 reg btn_fire1 = 0;
-reg btn_fire2 = 0;
 reg btn_one_player  = 0;
 reg btn_two_players = 0;
 
@@ -247,8 +243,6 @@ reg btn_down_2=0;
 reg btn_left_2=0;
 reg btn_right_2=0;
 reg btn_fire1_2=0;
-reg btn_fire2_2=0;
-reg btn_test=0;
 
 wire no_rotate = status[2] & ~direct_video;
 
@@ -258,19 +252,16 @@ wire m_down   = no_rotate ? btn_right | joystick_0[0] : btn_down  | joystick_0[2
 wire m_left   = no_rotate ? btn_down  | joystick_0[2] : btn_left  | joystick_0[1];
 wire m_right  = no_rotate ? btn_up    | joystick_0[3] : btn_right | joystick_0[0];
 wire m_fire1  = btn_fire1 | joystick_0[4];
-wire m_fire2  = btn_fire2 | joystick_0[5];
 
 wire m_up_2     = no_rotate ? btn_left_2  | joystick_1[1] : btn_up_2    | joystick_1[3];
 wire m_down_2   = no_rotate ? btn_right_2 | joystick_1[0] : btn_down_2  | joystick_1[2];
 wire m_left_2   = no_rotate ? btn_down_2  | joystick_1[2] : btn_left_2  | joystick_1[1];
 wire m_right_2  = no_rotate ? btn_up_2    | joystick_1[3] : btn_right_2 | joystick_1[0];
 wire m_fire1_2  = btn_fire1_2|joystick_1[4];
-wire m_fire2_2  = btn_fire2_2|joystick_1[5];
 
-
-wire m_start1 = btn_one_player  | joy[6];
-wire m_start2 = btn_two_players | joy[7];
-wire m_coin   = joy[8];
+wire m_start1 = btn_one_player  | joy[5];
+wire m_start2 = btn_two_players | joy[6];
+wire m_coin   = joy[7];
 
 
 wire hblank, vblank;
@@ -324,12 +315,6 @@ scramble_top scramble
 	//.dn_wr(ioctl_wr),
 
 	.O_AUDIO(audio),
-
-//	.ip_1p(~{m_start1|btn_start_1,m_fire2,m_fire1,m_left,m_right,m_up,m_down}),
-//	.ip_2p(~{m_start2|btn_start_2,m_fire2_2,m_fire1_2,m_left_2,m_right_2,m_up_2,m_down_2}),
-//	.ip_service(~status[14]),
-//	.ip_coin1(m_coin|btn_coin_1|btn_coin_2),
-//	.ip_coin2(1'b0),
 
 	.IN0_O(~{m_coin, 1'b0, m_left, m_right, m_down, m_up, 1'b1, m_start2|m_fire1_2}),     // coin1, coin2, left, right, down, up, unused, start 2p / player2 fire
 	.IN1_O(~{1'b1, 1'b1, m_left_2, m_right_2, m_down_2, m_up_2, status[13], status[8]}), // unused, unused, left, right, down, up, demo sounds, lives 3/5
