@@ -108,6 +108,7 @@ localparam CONF_STR = {
 	"-;",
 	"O8,Lives,3,5;",	
 	"OD,Demo Sounds,Off,On;",
+	"OE,Test,Off,On;",
 	"-;",
 	"R0,Reset;",
 	"J1,Fire,Start 1P,Start 2P,Coin;",
@@ -265,7 +266,7 @@ wire m_coin   = joy[7];
 
 
 wire hblank, vblank;
-//wire ce_vid = clk_sys;
+wire ce_vid = clk_sys;
 wire hs, vs;
 wire [3:0] r,g;
 wire [3:0] b;
@@ -316,9 +317,9 @@ scramble_top scramble
 
 	.O_AUDIO(audio),
 
-	.IN0_O(~{m_coin, 1'b0, m_left, m_right, m_down, m_up, 1'b1, m_start2|m_fire1_2}),     // coin1, coin2, left, right, down, up, unused, start 2p / player2 fire
-	.IN1_O(~{1'b1, 1'b1, m_left_2, m_right_2, m_down_2, m_up_2, status[13], status[8]}), // unused, unused, left, right, down, up, demo sounds, lives 3/5
-	.IN2_O({5'b0, 2'b01, ~(m_fire1 | m_start1)}),                                        // unused[7:3], coin dip[2:1], start 1p / player1 fire
+	.IN0_O(~{m_coin, 1'b0, m_left, m_right, m_down, m_up, 1'b0, m_start2|m_fire1_2}),    // coin1, coin2, left, right, down, up, unused, start 2p / player2 fire
+	.IN1_O(~{1'b0, 1'b0, m_left_2, m_right_2, m_down_2, m_up_2, status[13], status[8]}), // unused, unused, left, right, down, up, demo sounds, lives 3/5
+	.IN2_O({5'b11111, 2'b01, ~(m_fire1 | m_start1 | status[14])}),                       // unused[7:3], coin dip[2:1], start 1p / player1 fire / test
 
 	.RESET(RESET | status[0] | ioctl_download | buttons[1]),
 	.clk(clk_sys),
