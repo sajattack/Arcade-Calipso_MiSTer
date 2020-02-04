@@ -1,3 +1,7 @@
+### NOTE: Sorgelig did his own port of Calipso as of 2020-02-03, this is just
+a learning ground for me now. I recommend you use the official MiSTer version
+available at https://github.com/MiSTer-devel/Arcade-Scramble_MiSTer
+
 ---------------------------------------------------------------------------------
 --
 -- Calipso port adapted by Sajattack from Scramble port by Sorgelig
